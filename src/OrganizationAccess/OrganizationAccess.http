@@ -1,0 +1,6 @@
+@OrganizationAccess_HostAddress = http://localhost:5245
+
+GET {{OrganizationAccess_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
