@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-organization-access
+  labels:
+    app: service-organization-access
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: service-organization-access
+  template:
+    metadata:
+      labels:
+        app: service-organization-access
+    spec:
+      containers:
+      - name: service-organization-access
+        #Replace with actual container registry URL
+        image: your-registry.com/issueresolutionorg/service-organization-access:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: service-organization-access-config
