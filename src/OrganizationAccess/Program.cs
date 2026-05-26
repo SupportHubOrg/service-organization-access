@@ -1,41 +1,211 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using Prometheus;
+using Serilog;
+
+using SupportHub.OrganizationAccesss.Infrastructure.Data;
+using SupportHub.OrganizationAccesss.Infrastructure.Messaging;
+
+using SupportHub.OrganizationAccesss.Features.Users.GetUsers;
+using SupportHub.OrganizationAccesss.Features.Users.CreateUser;
+using SupportHub.OrganizationAccesss.Features.Users.GetUser;
+using SupportHub.OrganizationAccesss.Features.Users.DeleteUser;
+using SupportHub.OrganizationAccesss.Features.Users.UpdateUser;
+using SupportHub.OrganizationAccesss.Features.Organizations.CreateOrganization;
+using SupportHub.OrganizationAccesss.Features.Organizations.GetOrganizations;
+using SupportHub.OrganizationAccesss.Features.Organizations.GetOrganization;
+using SupportHub.OrganizationAccesss.Features.Organizations.DeleteOrganization;
+using SupportHub.OrganizationAccesss.Features.Organizations.UpdateOrganization;
+using SupportHub.OrganizationAccesss.Features.Organizations.CreationConfirmation;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+//Add a Serilog logger with console output and configuration from appsettings.json
+builder.Host.UseSerilog((ctx, config) =>
+    config.ReadFrom.Configuration(ctx.Configuration));
+
+//Allow enums to be serialized as strings in JSON responses for better readability in API responses and documentation
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: true));
+});
+
+//Add support for discovery and documenting API endpoints in the application
+builder.Services.AddEndpointsApiExplorer();
+
+//Add Swagger/OpenAPI support for API documentation and testing
+builder.Services.AddSwaggerGen();
+
+//Enable health monitoring of the application
+builder.Services.AddHealthChecks();
+
+//Add CORS policy
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DefaultCorsPolicy", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+//Add MediatR for in-process messaging and CQRS pattern implementation
+builder.Services.AddMediatR(cfg => 
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+//Add database context
+builder.AddSqlServerDbContext<OrganizationDbContext>("TicketDb");
+
+//Bind KafkaSettings from appsettings.json and override with Aspire-injected connection string if available
+builder.Services.Configure<KafkaSettings>(options =>
+{
+    //Bind the standard settings from appsettings.json
+    builder.Configuration.GetSection("Kafka").Bind(options);
+
+    //Fetch the Aspire-injected connection string for Kafka
+    var aspireKafkaConnectionString = builder.Configuration.GetConnectionString("kafka");
+
+    //If Aspire provided a connection string, use it instead of localhost
+    if (!string.IsNullOrEmpty(aspireKafkaConnectionString))
+    {
+        options.BootstrapServers = aspireKafkaConnectionString;
+    }
+});
+
+//Register the Publisher for feature handlers to inject
+builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
+
+//Register the Background Kafka Consumer
+builder.Services.AddHostedService<TicketEventConsumerService>();
+
+//Fetch authentication settings from configuration
+var authority = builder.Configuration["Authentication:Authority"]!;
+var audience = builder.Configuration["Authentication:Audience"]!;
+
+//Validate that required authentication settings are present
+if (string.IsNullOrWhiteSpace(authority))
+{
+    throw new InvalidOperationException(
+        "Authentication:Authority is not configured. " +
+        "Please set it in appsettings.json (e.g., 'https://keycloak.example.com/realms/support-hub')");
+}
+if (string.IsNullOrWhiteSpace(audience))
+{
+    throw new InvalidOperationException(
+        "Authentication:Audience is not configured. " +
+        "Please set it in appsettings.json (e.g., 'ticket-management-service')");
+}
+//Validate that Authority is a valid URL
+if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri) || authorityUri.Scheme != "https" && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException(
+        $"Authentication:Authority must be a valid HTTPS URL. Received: '{authority}'. " +
+        "HTTP is only allowed in Development environment.");
+}
+
+//Add JWT authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        //Keycloak uses asymmetric RSA keys published at the JWKS endpoint
+        options.Authority = authority;
+        options.Audience = audience;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.Zero
+        };
+        //Keycloak-specific configuration for development environments
+        if (builder.Environment.IsDevelopment())
+        {
+            options.RequireHttpsMetadata = false;
+        }
+    });
+
+//Add authorization services to enable role-based or policy-based access control for API endpoints
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+//Add HTTP request logging middleware to log incoming requests and outgoing responses for better observability and debugging
+app.UseSerilogRequestLogging();
+
+//Register swagger when in development environment for API documentation and testing
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
+//Redirect HTTP requests to HTTPS
 app.UseHttpsRedirection();
+//Handle forwarded headers for reverse proxy scenarios
+app.UseForwardedHeaders();
+//Apply the defined CORS policy to allow cross-origin requests from the frontend application and other clients
+app.UseCors("DefaultCorsPolicy");
 
-var summaries = new[]
+//Enable authentication and authorization middleware to protect API endpoints and ensure only authorized users can access them
+app.UseAuthentication();
+app.UseAuthorization();
+
+//Register health check endpoints
+app.MapHealthChecks("/health/live");
+app.MapHealthChecks("/health/ready");
+app.MapMetrics();
+
+//Map User API endpoints
+app.MapUpdateUserEndpoint();
+app.MapCreateUserEndpoint();
+app.MapDeleteUserEndpoint();
+app.MapGetUserEndpoint();
+app.MapGetUsersEndpoint();
+
+//Map Organization API endpoints
+app.MapCreateOrganizationEndpoint();
+app.MapGetOrganizationsEndpoint();
+app.MapGetOrganizationEndpoint();
+app.MapDeleteOrganizationEndpoint();
+app.MapUpdateOrganizationEndpoint();
+app.MapCreationConfirmationEndpoint();
+
+//Apply any pending database migrations on application startup to ensure the database schema is up to date with the application's data model
+using (var scope = app.Services.CreateScope())
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var dbContext = scope.ServiceProvider.GetRequiredService<OrganizationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-app.MapGet("/weatherforecast", () =>
+    try
+    {
+        logger.LogInformation("Applying database migrations...");
+        await dbContext.Database.MigrateAsync();
+        logger.LogInformation("Database migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogCritical(ex, "An error occurred while migrating the database.");
+        throw;
+    }
+}
+
+//Start the application
+try
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+    Log.Information("Starting Service Ticket Management API...");
+    app.Run();
+}
+catch (Exception ex)
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    Log.Fatal(ex, "Application failed to start correctly!");
+}
+finally
+{
+    Log.CloseAndFlush();
 }
