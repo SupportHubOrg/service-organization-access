@@ -59,7 +59,7 @@ builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 //Add database context
-builder.AddSqlServerDbContext<OrganizationDbContext>("TicketDb");
+builder.AddSqlServerDbContext<OrganizationDbContext>("OrgDb");
 
 //Bind KafkaSettings from appsettings.json and override with Aspire-injected connection string if available
 builder.Services.Configure<KafkaSettings>(options =>

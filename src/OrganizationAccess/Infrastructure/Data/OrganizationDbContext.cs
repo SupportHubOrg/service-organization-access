@@ -34,6 +34,16 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Data
                 .Property(o => o.Tier)
                 .HasConversion<string>();
 
+            modelBuilder
+                .Entity<Organization>()
+                .Property(o => o.CreationConfirmationStatus)
+                .HasConversion<string>();
+
+            modelBuilder
+                .Entity<Organization>()
+                .Property(o => o.Tier)
+                .HasConversion<string>();
+
             //User Configuration
             modelBuilder.Entity<User>(entity =>
             {
