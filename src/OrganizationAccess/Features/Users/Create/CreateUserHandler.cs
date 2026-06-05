@@ -18,7 +18,8 @@ public class CreateUserHandler(OrganizationDbContext db, IEventPublisher publish
     public async Task<Guid> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
         //Retrieve the creator from the database, if they do not exist
-        User? creator = await _db.Users.Include(u => u.Organization)
+        User? creator = await _db.Users
+            .Include(u => u.Organization)
             .FirstOrDefaultAsync(u => u.Id == request.CreatorId, cancellationToken);
         if (creator == null)
             throw new AppException(StatusCodes.Status404NotFound, $"User with ID {request.CreatorId} not found.");
@@ -49,7 +50,7 @@ public class CreateUserHandler(OrganizationDbContext db, IEventPublisher publish
         //Create the new user entity
         var user = new User
         {
-            Id = Guid.NewGuid(),
+            Id = request.KeycloakId ?? Guid.NewGuid(),
             OrganizationId = request.OrganizationId,
             Email = request.Email,
             Role = request.Role,
@@ -76,6 +77,16 @@ public class CreateUserHandler(OrganizationDbContext db, IEventPublisher publish
                 InvitationToken: user.InvitationToken!
             );
             await _publisher.PublishAsync("UserInvitationCreated", invitationEvent, cancellationToken);
+        }
+        else
+        {
+            var invitationEvent = new UserInvitationAcceptedEvent(
+                OrganizationId: user.OrganizationId!.Value,
+                UserId: user.Id,
+                UserEmail: user.Email,
+                Role: user.Role
+            );
+            await _publisher.PublishAsync("UserInvitationAccepted", invitationEvent, cancellationToken);
         }
 
         //Return the assigned ID

@@ -56,7 +56,7 @@ public class CreationConfirmationHandler(OrganizationDbContext db, IEventPublish
         await _db.SaveChangesAsync(cancellationToken);
 
         //Publish OrganizationCreatedEvent to Kafka
-        var organizationCreatedEvent = new OrganizationCreatedEvent(organization.Id, organization.Name, organization.Tier, manager.Id);
+        OrganizationCreatedEvent organizationCreatedEvent = new(organization.Id, organization.Name, organization.Tier, manager.Id);
         await _publisher.PublishAsync("OrganizationCreated", organizationCreatedEvent, cancellationToken);
 
         //If any sla rules are not set to zero publish OrganizationSettingsUpdatedEvent to Kafka to trigger the creation of the default organization settings in the Organization Settings Service

@@ -10,6 +10,7 @@ namespace SupportHub.OrganizationAccesss.Features.Organizations.CreateOrganizati
 /// </summary>
 /// <param name="Name">The name of the organization.</param>
 /// <param name="Tier">The subscription tier of the organization.</param>
+/// <param name="ManagerKeycloakId">The Keycloak ID of the organization manager, who will be invited to join the organization with the role of Organization Manager.</param>
 /// <param name="ManagerEmail">The email of the organization manager, who will be invited to join the organization with the role of Organization Manager.</param>
 /// <param name="SlaFirstResponseMinutes">The SLA first AI response time in minutes for the organization.</param>
 /// <param name="SlaHumanResponseMinutes">The SLA human response time in minutes for the organization.</param>
@@ -18,6 +19,7 @@ namespace SupportHub.OrganizationAccesss.Features.Organizations.CreateOrganizati
 public record CreateOrganizationCommand(
     string Name,
     SubscriptionTier Tier,
+    Guid? ManagerKeycloakId,
     string ManagerEmail,
     decimal? SlaFirstResponseMinutes,
     decimal? SlaHumanResponseMinutes,

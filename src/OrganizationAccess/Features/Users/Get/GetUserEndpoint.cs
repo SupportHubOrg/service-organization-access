@@ -10,7 +10,7 @@ public static class GetUserEndpoint
     /// </summary>
     public static void MapGetUserEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/users/{userId}", async (
+        app.MapGet("/api/organizations/users/{userId}", async (
             Guid userId,
             ClaimsPrincipal claimsPrincipal,
             IMediator mediator) =>

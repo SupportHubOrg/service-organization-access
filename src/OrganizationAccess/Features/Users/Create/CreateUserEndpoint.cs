@@ -13,7 +13,7 @@ public static class CreateUserEndpoint
     /// <param name="app"></param>
     public static void MapCreateUserEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/users", async (
+        app.MapPost("/api/organizations/users", async (
             CreateUserRequest request,
             ClaimsPrincipal user,
             IMediator mediator) =>
@@ -26,6 +26,7 @@ public static class CreateUserEndpoint
             //Create and send the command
             var command = new CreateUserCommand(
                 CreatorId: creatorId,
+                KeycloakId: request.KeycloakId,
                 Email: request.Email,
                 Role: request.Role,
                 OrganizationId: request.OrganizationId,
@@ -40,6 +41,7 @@ public static class CreateUserEndpoint
 }
 
 public record CreateUserRequest(
+    Guid? KeycloakId,
     string Email,
     Role Role,
     Guid? OrganizationId,

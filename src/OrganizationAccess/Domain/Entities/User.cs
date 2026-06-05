@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+
 using SupportHub.OrganizationAccesss.Domain.Enums;
 
 namespace SupportHub.OrganizationAccesss.Domain.Entities

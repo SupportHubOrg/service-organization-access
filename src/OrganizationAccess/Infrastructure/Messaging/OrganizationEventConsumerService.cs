@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 using MediatR;
@@ -13,10 +14,10 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
     /// Background service that consumes events from Kafka topics, deserializes them, and routes them to the appropriate MediatR commands for processing.
     /// Designed to run continuously as part of the application's hosted services.
     /// </summary>
-    public class TicketEventConsumerService : BackgroundService
+    public class OrganizationEventConsumerService : BackgroundService
     {
         private readonly KafkaSettings _settings;
-        private readonly ILogger<TicketEventConsumerService> _logger;
+        private readonly ILogger<OrganizationEventConsumerService> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IProducer<Null, string> _dlqProducer;
 
@@ -27,9 +28,9 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
         /// <param name="settings"></param>
         /// <param name="logger"></param>
         /// <param name="scopeFactory"></param>
-        public TicketEventConsumerService(
+        public OrganizationEventConsumerService(
             IOptions<KafkaSettings> settings,
-            ILogger<TicketEventConsumerService> logger,
+            ILogger<OrganizationEventConsumerService> logger,
             IServiceScopeFactory scopeFactory)
         {
             _settings = settings.Value;
@@ -166,6 +167,15 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
         }
 
         /// <summary>
+        /// Serializer options for JSON deserialization allowing for case-insensitive property matching.
+        /// </summary>
+        private static readonly JsonSerializerOptions _serializerOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter(allowIntegerValues: true) }
+        };
+
+        /// <summary>
         /// Processes a consumed Kafka event by routing it to the appropriate MediatR command based on the event type.
         /// </summary>
         /// <param name="eventType"></param>
@@ -182,7 +192,7 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
             switch (eventType)
             {
                 case "PaymentConfirmed":
-                    var paymentConfirmedEvent = JsonSerializer.Deserialize<EventEnvelope<PaymentConfirmedPayload>>(rawJson);
+                    var paymentConfirmedEvent = JsonSerializer.Deserialize<EventEnvelope<PaymentConfirmedPayload>>(rawJson, _serializerOptions);
                     if (paymentConfirmedEvent?.Payload != null)
                         await mediator.Send(new ProcessPaymentConfirmedCommand(paymentConfirmedEvent.Payload), stoppingToken);
                     else
@@ -190,7 +200,7 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
                     break;
 
                 case "PaymentFailed":
-                    var paymentFailedEvent = JsonSerializer.Deserialize<EventEnvelope<PaymentFailedPayload>>(rawJson);
+                    var paymentFailedEvent = JsonSerializer.Deserialize<EventEnvelope<PaymentFailedPayload>>(rawJson, _serializerOptions);
                     if (paymentFailedEvent?.Payload != null)
                         await mediator.Send(new ProcessPaymentFailedCommand(paymentFailedEvent.Payload), stoppingToken);
                     else
@@ -198,7 +208,7 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
                     break;
 
                 case "SubscriptionCancelled":
-                    var subscriptionCancelledEvent = JsonSerializer.Deserialize<EventEnvelope<SubscriptionCancelledPayload>>(rawJson);
+                    var subscriptionCancelledEvent = JsonSerializer.Deserialize<EventEnvelope<SubscriptionCancelledPayload>>(rawJson, _serializerOptions);
                     if (subscriptionCancelledEvent?.Payload != null)
                         await mediator.Send(new ProcessSubscriptionCancelledCommand(subscriptionCancelledEvent.Payload), stoppingToken);
                     else
@@ -206,7 +216,7 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
                     break;
                 
                 case "SubscriptionRenewed":
-                    var subscriptionRenewedEvent = JsonSerializer.Deserialize<EventEnvelope<SubscriptionRenewedPayload>>(rawJson);
+                    var subscriptionRenewedEvent = JsonSerializer.Deserialize<EventEnvelope<SubscriptionRenewedPayload>>(rawJson, _serializerOptions);
                     if (subscriptionRenewedEvent?.Payload != null)
                         await mediator.Send(new ProcessSubscriptionRenewedCommand(subscriptionRenewedEvent.Payload), stoppingToken);
                     else
@@ -214,7 +224,7 @@ namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging
                     break;
                 
                 case "SubscriptionUpdated":
-                    var subscriptionUpdatedEvent = JsonSerializer.Deserialize<EventEnvelope<SubscriptionUpdatedPayload>>(rawJson);
+                    var subscriptionUpdatedEvent = JsonSerializer.Deserialize<EventEnvelope<SubscriptionUpdatedPayload>>(rawJson, _serializerOptions);
                     if (subscriptionUpdatedEvent?.Payload != null)
                         await mediator.Send(new ProcessSubscriptionUpdatedCommand(subscriptionUpdatedEvent.Payload), stoppingToken);
                     else

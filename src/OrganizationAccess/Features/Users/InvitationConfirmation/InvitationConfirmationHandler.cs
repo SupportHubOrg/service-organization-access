@@ -46,7 +46,7 @@ public class InvitationConfirmationHandler(OrganizationDbContext db, IEventPubli
 
         //Publish UserInvitationAccepted event to Kafka
         UserInvitationAcceptedEvent userInvitationAcceptedEvent = new(
-            OrganizationId: user.OrganizationId ?? Guid.Empty,
+            OrganizationId: user.OrganizationId,
             UserId: user.Id,
             UserEmail: user.Email,
             Role: user.Role

@@ -10,7 +10,7 @@ public static class DeleteUserEndpoint
     /// </summary>
     public static void MapDeleteUserEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapDelete("/api/users/{userId}", async (
+        app.MapDelete("/api/organizations/users/{userId}", async (
             Guid userId,
             ClaimsPrincipal user,
             IMediator mediator) =>

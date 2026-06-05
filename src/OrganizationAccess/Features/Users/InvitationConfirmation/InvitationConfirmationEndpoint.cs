@@ -10,7 +10,7 @@ public static class InvitationConfirmationEndpoint
     /// <param name="app"></param>
     public static void MapInvitationConfirmationEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapPut("/api/users/{userId}/invitation-confirmation/{token}", async (
+        app.MapPut("/api/organizations/users/{userId}/invitation-confirmation/{token}", async (
             Guid userId,
             string token,
             IMediator mediator) =>

@@ -13,7 +13,7 @@ public static class UpdateUserEndpoint
     /// <param name="app"></param>
     public static void MapUpdateUserEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapPut("/api/users/{userId}", async (
+        app.MapPut("/api/organizations/users/{userId}", async (
             Guid userId,
             UpdateUserRequest request,
             ClaimsPrincipal user,

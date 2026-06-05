@@ -57,7 +57,7 @@ public class CreateOrganizationHandler(OrganizationDbContext db, IEventPublisher
         //Create the organization manager user entity
         User manager = new()
         {
-            Id = Guid.NewGuid(),
+            Id = request.ManagerKeycloakId ?? Guid.NewGuid(),
             Email = request.ManagerEmail,
             Role = Role.ORGANIZATION_MANAGER,
             OrganizationId = organization.Id,
@@ -71,9 +71,9 @@ public class CreateOrganizationHandler(OrganizationDbContext db, IEventPublisher
         //Save changes to the database
         await _db.SaveChangesAsync(cancellationToken);
 
-        //Publish OrganizationCreatedEvent to Kafka
-        OrganizationRegisteredEvent organizationCreatedEvent = new(organization.Id, organization.Name, organization.Tier, manager.Id, organization.CreationToken);
-        await _publisher.PublishAsync("OrganizationRegistered", organizationCreatedEvent, cancellationToken);
+        //Publish OrganizationRegisteredEvent to Kafka
+        OrganizationRegisteredEvent organizationRegisteredEvent = new(organization.Id, organization.Name, organization.Tier, manager.Id, organization.CreationToken);
+        await _publisher.PublishAsync("OrganizationRegistered", organizationRegisteredEvent, cancellationToken);
 
         //Return the new organization ID
         return organization.Id;

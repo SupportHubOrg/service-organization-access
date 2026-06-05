@@ -22,6 +22,7 @@ public static class CreateOrganizationEndpoint
             var command = new CreateOrganizationCommand(
                 request.Name,
                 request.Tier,
+                request.ManagerKeycloakId,
                 request.ManagerEmail,
                 request.SlaFirstResponseMinutes,
                 request.SlaHumanResponseMinutes,
@@ -39,6 +40,7 @@ public static class CreateOrganizationEndpoint
 public record CreateOrganizationRequest(
     string Name,
     SubscriptionTier Tier,
+    Guid ManagerKeycloakId,
     string ManagerEmail,
     decimal? SlaFirstResponseMinutes,
     decimal? SlaHumanResponseMinutes,

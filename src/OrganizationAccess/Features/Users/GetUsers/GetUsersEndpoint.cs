@@ -12,7 +12,7 @@ public static class GetUsersEndpoint
     /// </summary>
     public static void MapGetUsersEndpoint(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/users", async (
+        app.MapGet("/api/organizations/users", async (
             [AsParameters] GetUsersRequest parameters,
             ClaimsPrincipal claimsPrincipal,
             IMediator mediator) =>

@@ -9,12 +9,14 @@ namespace SupportHub.OrganizationAccesss.Features.Users.CreateUser;
 /// Command to create a new support ticket.
 /// </summary>
 /// <param name="CreatorId">ID of the user creating the new user.</param>
+/// <param name="KeycloakId">Keycloak ID of the new user.</param>
 /// <param name="Email">Email of the new user.</param>
 /// <param name="Role">Role of the new user.</param>
 /// <param name="OrganizationId">Organization ID the new user belongs to. Not required if the user is a SupportHub employee.</param>
 /// <param name="IsSupportHubEmployee">Indicates if the new user is a SupportHub employee. SupportHub employees do not require an OrganizationId.</param>
 public record CreateUserCommand(
     Guid CreatorId,
+    Guid? KeycloakId,
     string Email,
     Role Role,
     Guid? OrganizationId,

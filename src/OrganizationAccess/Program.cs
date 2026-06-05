@@ -19,6 +19,9 @@ using SupportHub.OrganizationAccesss.Features.Organizations.GetOrganization;
 using SupportHub.OrganizationAccesss.Features.Organizations.DeleteOrganization;
 using SupportHub.OrganizationAccesss.Features.Organizations.UpdateOrganization;
 using SupportHub.OrganizationAccesss.Features.Organizations.CreationConfirmation;
+using SupportHub.OrganizationAccesss.Infrastructure.Middleware;
+using Microsoft.AspNetCore.HttpOverrides;
+using SupportHub.OrganizationAccesss.Features.Users.InvitationConfirmation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -81,7 +84,7 @@ builder.Services.Configure<KafkaSettings>(options =>
 builder.Services.AddSingleton<IEventPublisher, KafkaEventPublisher>();
 
 //Register the Background Kafka Consumer
-builder.Services.AddHostedService<TicketEventConsumerService>();
+builder.Services.AddHostedService<OrganizationEventConsumerService>();
 
 //Fetch authentication settings from configuration
 var authority = builder.Configuration["Authentication:Authority"]!;
@@ -127,13 +130,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         if (builder.Environment.IsDevelopment())
         {
             options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = false
+            };
         }
     });
 
 //Add authorization services to enable role-based or policy-based access control for API endpoints
 builder.Services.AddAuthorization();
 
+//Add exception handling middleware
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+//Configure the application to look for and honor proxy network signatures
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    
+    //Clear restrictions for containerized architectures where upstream proxy IPs change dynamically
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+//Handle forwarded headers for reverse proxy scenarios
+app.UseForwardedHeaders();
+
+//Add exception handling middleware
+app.UseExceptionHandler(_ => {});
 
 //Add HTTP request logging middleware to log incoming requests and outgoing responses for better observability and debugging
 app.UseSerilogRequestLogging();
@@ -146,9 +173,11 @@ if (app.Environment.IsDevelopment())
 }
 
 //Redirect HTTP requests to HTTPS
-app.UseHttpsRedirection();
-//Handle forwarded headers for reverse proxy scenarios
-app.UseForwardedHeaders();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 //Apply the defined CORS policy to allow cross-origin requests from the frontend application and other clients
 app.UseCors("DefaultCorsPolicy");
 
@@ -167,6 +196,7 @@ app.MapCreateUserEndpoint();
 app.MapDeleteUserEndpoint();
 app.MapGetUserEndpoint();
 app.MapGetUsersEndpoint();
+app.MapInvitationConfirmationEndpoint();
 
 //Map Organization API endpoints
 app.MapCreateOrganizationEndpoint();
@@ -185,7 +215,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         logger.LogInformation("Applying database migrations...");
-        await dbContext.Database.MigrateAsync();
+        await dbContext.Database.EnsureCreatedAsync();
         logger.LogInformation("Database migrations applied successfully.");
     }
     catch (Exception ex)
@@ -198,8 +228,9 @@ using (var scope = app.Services.CreateScope())
 //Start the application
 try
 {
-    Log.Information("Starting Service Ticket Management API...");
-    app.Run();
+    await app.SeedGlobalIdentitiesAsync();
+
+    await app.RunAsync();
 }
 catch (Exception ex)
 {
