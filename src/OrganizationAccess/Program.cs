@@ -183,6 +183,21 @@ app.UseCors("DefaultCorsPolicy");
 
 //Enable authentication and authorization middleware to protect API endpoints and ensure only authorized users can access them
 app.UseAuthentication();
+
+//Map the Keycloak 'sub' claim to the standard 'NameIdentifier' claim for compatibility
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity is System.Security.Claims.ClaimsIdentity identity && identity.IsAuthenticated)
+    {
+        var sub = identity.FindFirst("sub")?.Value;
+        if (sub != null && !identity.HasClaim(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier))
+        {
+            identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, sub));
+        }
+    }
+    await next();
+});
+
 app.UseAuthorization();
 
 //Register health check endpoints
