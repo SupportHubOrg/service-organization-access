@@ -66,9 +66,9 @@ public class GetOrganizationHandler(OrganizationDbContext db) : IRequestHandler<
                 organization.SlaHumanResponseMinutes,
                 organization.SlaResolutionMinutes,
                 organization.AiTrustThreshold,
+                organization.CreationConfirmationStatus,
                 null,
-                null,
-                null,
+                organization.ConfirmedAt,
                 organization.CreatedAt,
                 organization.UpdatedAt
             );
