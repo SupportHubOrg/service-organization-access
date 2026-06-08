@@ -7,7 +7,7 @@ public record UserInvitationCreatedEvent(Guid OrganizationId, Guid UserId, strin
 public record OrganizationSettingsUpdatedEvent(Guid OrganizationId, decimal SlaFirstResponseMinutes, decimal SlaHumanResponseMinutes, decimal SlaResolutionMinutes, decimal AiTrustThreshold);
 public record OrganizationDeletedEvent(Guid OrganizationId, string OrganizationName);
 public record OrganizationCreatedEvent(Guid OrganizationId, string OrganizationName, SubscriptionTier Tier, Guid ManagerId);
-public record OrganizationRegisteredEvent(Guid OrganizationId, string OrganizationName, SubscriptionTier Tier, Guid ManagerId, string Token);
+public record OrganizationRegisteredEvent(Guid OrganizationId, string OrganizationName, SubscriptionTier Tier, Guid ManagerId, string ManagerEmail, string Token);
 public record UserInvitationAcceptedEvent(Guid? OrganizationId, Guid UserId, string UserEmail, Role Role);
 public record UserRoleUpdatedEvent(Guid OrganizationId, Guid UserId, Role OldRole, Role NewRole);
 public record UserRemovedFromOrganizationEvent(Guid OrganizationId, Guid UserId, string UserEmail);
