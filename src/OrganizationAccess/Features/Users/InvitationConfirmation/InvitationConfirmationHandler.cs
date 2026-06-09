@@ -35,25 +35,44 @@ public class InvitationConfirmationHandler(OrganizationDbContext db, IEventPubli
         if (user.InvitationToken != request.Token || user.InvitationExpiresAt < DateTime.UtcNow)
             throw new AppException(StatusCodes.Status400BadRequest, $"Invalid or expired invitation token for user {request.UserId}.");
 
-        //Update the invitation status to accepted
-        user.InvitationStatus = InvitationStatus.ACCEPTED;
-        user.UpdatedAt = DateTime.UtcNow;
-        user.InvitationExpiresAt = null;
-        user.InvitationToken = null;
+        //Check if the Keycloak ID already exists
+        if (await _db.Users.AnyAsync(u => u.Id == request.KeycloakId, cancellationToken))
+            throw new AppException(StatusCodes.Status400BadRequest, "User account is already linked.");
+
+        //Remove the temporary user record
+        _db.Users.Remove(user);
+
+        //Create the finalized user record with the actual Keycloak ID
+        var finalizedUser = new User
+        {
+            Id = request.KeycloakId,
+            OrganizationId = user.OrganizationId,
+            Email = user.Email,
+            Role = user.Role,
+            IsSupportHubEmployee = user.IsSupportHubEmployee,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = DateTime.UtcNow,
+            InvitationStatus = InvitationStatus.ACCEPTED,
+            InvitationAcceptedAt = DateTime.UtcNow,
+            InvitationToken = null,
+            InvitationCreatedAt = user.InvitationCreatedAt,
+            InvitationExpiresAt = null
+        };
+        _db.Users.Add(finalizedUser);
 
         //Save changes to the database
         await _db.SaveChangesAsync(cancellationToken);
 
         //Publish UserInvitationAccepted event to Kafka
         UserInvitationAcceptedEvent userInvitationAcceptedEvent = new(
-            OrganizationId: user.OrganizationId,
-            UserId: user.Id,
-            UserEmail: user.Email,
-            Role: user.Role
+            OrganizationId: finalizedUser.OrganizationId,
+            UserId: finalizedUser.Id,
+            UserEmail: finalizedUser.Email,
+            Role: finalizedUser.Role
         );
         await _publisher.PublishAsync("UserInvitationAccepted", userInvitationAcceptedEvent, cancellationToken);
 
-        //Return the ID of the newly accepted user
-        return user.Id;
+        //Return the new true ID of the accepted user
+        return finalizedUser.Id;
     }
 }

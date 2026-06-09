@@ -3,7 +3,7 @@ using SupportHub.OrganizationAccesss.Domain.Enums;
 namespace SupportHub.OrganizationAccesss.Infrastructure.Messaging;
 
 //Outgoing events published to Kafka
-public record UserInvitationCreatedEvent(Guid OrganizationId, Guid UserId, string UserEmail, string InvitationToken);
+public record UserInvitationCreatedEvent(Guid OrganizationId, Guid UserId, string UserEmail, string TargetRole, string InvitationToken);
 public record OrganizationSettingsUpdatedEvent(Guid OrganizationId, decimal SlaFirstResponseMinutes, decimal SlaHumanResponseMinutes, decimal SlaResolutionMinutes, decimal AiTrustThreshold);
 public record OrganizationDeletedEvent(Guid OrganizationId, string OrganizationName);
 public record OrganizationCreatedEvent(Guid OrganizationId, string OrganizationName, SubscriptionTier Tier, Guid ManagerId);

@@ -11,6 +11,7 @@ namespace SupportHub.OrganizationAccesss.Features.Users.InvitationConfirmation;
 /// <param name="Token">Invitation confirmation token sent in the invitation email.</param>
 public record InvitationConfirmationCommand(
     Guid UserId,
+    Guid KeycloakId,
     string Token
 ) : IRequest<Guid>;
 
@@ -23,5 +24,8 @@ public class InvitationConfirmationValidator : AbstractValidator<InvitationConfi
 
         RuleFor(x => x.Token)
             .NotEmpty().WithMessage("Invitation confirmation token is required.");
+
+        RuleFor(x => x.KeycloakId)
+            .NotEmpty().WithMessage("Keycloak ID is required. User must be authenticated to confirm invitation.");
     }
 }

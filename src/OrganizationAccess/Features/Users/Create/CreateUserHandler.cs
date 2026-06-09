@@ -74,6 +74,7 @@ public class CreateUserHandler(OrganizationDbContext db, IEventPublisher publish
                 OrganizationId: user.OrganizationId!.Value,
                 UserId: user.Id,
                 UserEmail: user.Email,
+                TargetRole: user.Role.ToString(),
                 InvitationToken: user.InvitationToken!
             );
             await _publisher.PublishAsync("UserInvitationCreated", invitationEvent, cancellationToken);
