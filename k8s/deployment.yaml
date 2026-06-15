@@ -1,25 +1,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service-organization-access
+  name: organization-access
   labels:
-    app: service-organization-access
+    app: organization-access
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: service-organization-access
+      app: organization-access
   template:
     metadata:
       labels:
-        app: service-organization-access
+        app: organization-access
     spec:
+      initContainers:
+      - name: wait-for-keycloak
+        image: busybox:1.36
+        command: ['sh', '-c', 'until wget -q -O - http://keycloak.default.svc.cluster.local:9000/health/ready; do echo "Waiting for Keycloak..."; sleep 5; done;']
       containers:
-      - name: service-organization-access
-        #Replace with actual container registry URL
-        image: your-registry.com/issueresolutionorg/service-organization-access:latest
+      - name: organization-access
+        image: your-registry.com/supporthub/organization-access:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
         envFrom:
         - configMapRef:
-            name: service-organization-access-config
+            name: organization-access-config
+        - secretRef:
+            name: organization-access-secret
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 10
