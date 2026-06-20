@@ -72,7 +72,7 @@ public class CreateOrganizationHandler(OrganizationDbContext db, IEventPublisher
         await _db.SaveChangesAsync(cancellationToken);
 
         //Publish OrganizationRegisteredEvent to Kafka
-        OrganizationRegisteredEvent organizationRegisteredEvent = new(organization.Id, organization.Name, organization.Tier, manager.Id, organization.CreationToken);
+        OrganizationRegisteredEvent organizationRegisteredEvent = new(organization.Id, organization.Name, organization.Tier, manager.Id, manager.Email, organization.CreationToken);
         await _publisher.PublishAsync("OrganizationRegistered", organizationRegisteredEvent, cancellationToken);
 
         //Return the new organization ID

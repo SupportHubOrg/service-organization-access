@@ -155,7 +155,7 @@ Event type strings and payloads:
 - `OrganizationSettingsUpdated` → `OrganizationSettingsUpdatedEvent`: `OrganizationId`, `SlaFirstResponseMinutes`, `SlaHumanResponseMinutes`, `SlaResolutionMinutes`, `AiTrustThreshold`
 - `OrganizationDeleted` → `OrganizationDeletedEvent`: `OrganizationId`, `OrganizationName`
 - `OrganizationCreated` → `OrganizationCreatedEvent`: `OrganizationId`, `OrganizationName`, `Tier`, `ManagerId`
-- `OrganizationRegistered` → `OrganizationRegisteredEvent`: `OrganizationId`, `OrganizationName`, `Tier`, `ManagerId`, `Token`
+- `OrganizationRegistered` → `OrganizationRegisteredEvent`: `OrganizationId`, `OrganizationName`, `Tier`, `ManagerId`, `ManagerEmail`, `Token`
 - `UserInvitationAccepted` → `UserInvitationAcceptedEvent`: `OrganizationId`, `UserId`, `UserEmail`, `Role`
 - `UserRoleUpdated` → `UserRoleUpdatedEvent`: `OrganizationId`, `UserId`, `OldRole`, `NewRole`
 - `UserRemovedFromOrganization` → `UserRemovedFromOrganizationEvent`: `OrganizationId`, `UserId`, `UserEmail`
