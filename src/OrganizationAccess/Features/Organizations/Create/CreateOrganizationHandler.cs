@@ -27,13 +27,13 @@ public class CreateOrganizationHandler(OrganizationDbContext db, IEventPublisher
         bool emailExists = await _db.Users
             .AnyAsync(u => u.Email == request.ManagerEmail, cancellationToken);
         if (emailExists)
-            throw new AppException(StatusCodes.Status400BadRequest, $"A user profile with email address {request.ManagerEmail} already exists.");
+            throw new AppException(StatusCodes.Status400BadRequest, $"User profile with email address {request.ManagerEmail} already exists.");
 
         //Check if organization name already exists
         bool organizationNameExists = await _db.Organizations
             .AnyAsync(o => o.Name == request.Name, cancellationToken);
         if (organizationNameExists)
-            throw new AppException(StatusCodes.Status400BadRequest, $"An organization with the name {request.Name} already exists.");
+            throw new AppException(StatusCodes.Status400BadRequest, $"Organization with the name {request.Name} already exists.");
 
         //Create the new organization entity
         Organization organization = new()

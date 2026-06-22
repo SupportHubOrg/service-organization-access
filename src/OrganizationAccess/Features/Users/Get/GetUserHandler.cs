@@ -58,10 +58,10 @@ public class GetUserHandler(OrganizationDbContext db) : IRequestHandler<GetUserQ
                 user.Email,
                 user.Role,
                 user.IsSupportHubEmployee,
-                null,
-                null,
-                null,
-                null,
+                operatorUser.Role == Role.ORGANIZATION_MANAGER ? user.InvitationStatus : null,
+                operatorUser.Role == Role.ORGANIZATION_MANAGER ? user.InvitationCreatedAt : null,
+                operatorUser.Role == Role.ORGANIZATION_MANAGER ? user.InvitationExpiresAt : null,
+                operatorUser.Role == Role.ORGANIZATION_MANAGER ? user.InvitationAcceptedAt : null,
                 user.CreatedAt,
                 user.UpdatedAt
             );

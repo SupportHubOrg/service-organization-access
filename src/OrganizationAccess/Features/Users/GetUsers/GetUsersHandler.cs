@@ -75,10 +75,10 @@ public class GetUsersHandler(OrganizationDbContext db) : IRequestHandler<GetUser
                 u.Email,
                 u.Role,
                 u.IsSupportHubEmployee,
-                isSystemAdmin ? u.InvitationStatus : null,
-                isSystemAdmin ? u.InvitationCreatedAt : null,
-                isSystemAdmin ? u.InvitationExpiresAt : null,
-                isSystemAdmin ? u.InvitationAcceptedAt : null,
+                requestingUser.Role == Role.ORGANIZATION_MANAGER || isSystemAdmin ? u.InvitationStatus : null,
+                requestingUser.Role == Role.ORGANIZATION_MANAGER || isSystemAdmin ? u.InvitationCreatedAt : null,
+                requestingUser.Role == Role.ORGANIZATION_MANAGER || isSystemAdmin ? u.InvitationExpiresAt : null,
+                requestingUser.Role == Role.ORGANIZATION_MANAGER || isSystemAdmin ? u.InvitationAcceptedAt : null,
                 u.CreatedAt,
                 u.UpdatedAt
             ))

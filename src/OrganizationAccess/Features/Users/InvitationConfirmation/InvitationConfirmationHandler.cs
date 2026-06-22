@@ -23,37 +23,51 @@ public class InvitationConfirmationHandler(OrganizationDbContext db, IEventPubli
     public async Task<Guid> Handle(InvitationConfirmationCommand request, CancellationToken cancellationToken)
     {
         //Check if the user exists in the database, if they do not exist return 404 Not Found
-        User? user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
-        if (user == null)
+        User? temporaryUser = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+        if (temporaryUser == null)
             throw new AppException(StatusCodes.Status404NotFound, $"User {request.UserId} not found.");
 
         //Check if the user has a pending invitation, if they do not have a pending invitation return 400 Bad Request
-        if (user.InvitationStatus != InvitationStatus.PENDING && user.InvitationExpiresAt != null)
+        if (temporaryUser.InvitationStatus != InvitationStatus.PENDING && temporaryUser.InvitationExpiresAt != null)
             throw new AppException(StatusCodes.Status400BadRequest, $"User {request.UserId} does not have a pending invitation.");
 
         //Check if the invitation token is valid and not expired, if it is invalid or expired return 400 Bad Request
-        if (user.InvitationToken != request.Token || user.InvitationExpiresAt < DateTime.UtcNow)
+        if (temporaryUser.InvitationToken != request.Token || temporaryUser.InvitationExpiresAt < DateTime.UtcNow)
             throw new AppException(StatusCodes.Status400BadRequest, $"Invalid or expired invitation token for user {request.UserId}.");
 
-        //Update the invitation status to accepted
-        user.InvitationStatus = InvitationStatus.ACCEPTED;
-        user.UpdatedAt = DateTime.UtcNow;
-        user.InvitationExpiresAt = null;
-        user.InvitationToken = null;
+        //Recreate the user using the new proper Id
+        User confirmedUser = new()
+        {
+            Id = request.KeycloakId,
+            OrganizationId = temporaryUser.OrganizationId,
+            Email = temporaryUser.Email,
+            Role = temporaryUser.Role,
+            IsSupportHubEmployee = temporaryUser.IsSupportHubEmployee,
+            InvitationStatus = InvitationStatus.ACCEPTED,
+            InvitationAcceptedAt = DateTime.UtcNow,
+            CreatedAt = temporaryUser.CreatedAt,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        //Delete the old duplicate user
+        _db.Users.Remove(temporaryUser);
+
+        //Add the new user to the database
+        _db.Users.Add(confirmedUser);
 
         //Save changes to the database
         await _db.SaveChangesAsync(cancellationToken);
 
         //Publish UserInvitationAccepted event to Kafka
         UserInvitationAcceptedEvent userInvitationAcceptedEvent = new(
-            OrganizationId: user.OrganizationId,
-            UserId: user.Id,
-            UserEmail: user.Email,
-            Role: user.Role
+            OrganizationId: confirmedUser.OrganizationId,
+            UserId: confirmedUser.Id,
+            UserEmail: confirmedUser.Email,
+            Role: confirmedUser.Role
         );
         await _publisher.PublishAsync("UserInvitationAccepted", userInvitationAcceptedEvent, cancellationToken);
 
         //Return the ID of the newly accepted user
-        return user.Id;
+        return confirmedUser.Id;
     }
 }

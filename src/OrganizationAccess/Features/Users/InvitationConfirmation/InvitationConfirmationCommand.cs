@@ -9,9 +9,11 @@ namespace SupportHub.OrganizationAccesss.Features.Users.InvitationConfirmation;
 /// <param name="UserId">ID of the user confirming the invitation.</param>
 /// <param name="OrganizationId">ID of the organization the user is being invited to.</param>
 /// <param name="Token">Invitation confirmation token sent in the invitation email.</param>
+/// <param name="KeycloakId">Keycloak ID of the user being invited.</param>
 public record InvitationConfirmationCommand(
     Guid UserId,
-    string Token
+    string Token,
+    Guid KeycloakId
 ) : IRequest<Guid>;
 
 public class InvitationConfirmationValidator : AbstractValidator<InvitationConfirmationCommand>
@@ -23,5 +25,8 @@ public class InvitationConfirmationValidator : AbstractValidator<InvitationConfi
 
         RuleFor(x => x.Token)
             .NotEmpty().WithMessage("Invitation confirmation token is required.");
+
+        RuleFor(x => x.KeycloakId)
+            .NotEmpty().WithMessage("Keycloak ID is required.");
     }
 }
